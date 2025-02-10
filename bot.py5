@@ -1,0 +1,112 @@
+import random  
+import sqlite3  
+import logging  
+from aiogram import Bot, Dispatcher, types  
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton  
+from aiogram.utils import executor  
+
+# Токен бота  
+TOKEN = "7809809237:AAH1Lh8agK8YLIpcLske5223xoQX3fmdCZA"  
+
+# Список промокодів  
+PROMO_CODES = ["AMIGO65", "AMIGO58", "AMIGO47", "AMIGO46", "AMIGO44",  
+               "AMIGO40", "AMIGO39", "AMIGO36", "AMIGO35", "AMIGO33",  
+               "AMIGO32", "AMIGO30", "AMIGO27", "AMIGO23", "AMIGO20"]  
+
+# Створення підключення до бота  
+bot = Bot(token=TOKEN)  
+dp = Dispatcher(bot)  
+
+# Включаємо логування (корисно для перевірки помилок)  
+logging.basicConfig(level=logging.INFO)  
+
+# Підключення до бази даних SQLite  
+conn = sqlite3.connect("users.db")  
+cursor = conn.cursor()  
+
+# Створюємо таблиці (якщо їх ще немає)  
+cursor.execute("""  
+    CREATE TABLE IF NOT EXISTS users (  
+        user_id INTEGER PRIMARY KEY,  
+        wallet TEXT,  
+        promo_code TEXT  
+    )  
+""")  
+
+cursor.execute("""  
+    CREATE TABLE IF NOT EXISTS reports (  
+        user_id INTEGER,  
+        report TEXT  
+    )  
+""")  
+
+conn.commit()  
+
+# 📌 Головне меню  
+keyboard = ReplyKeyboardMarkup(resize_keyboard=True)  
+keyboard.add(KeyboardButton("Resgatar código promocional"))  
+keyboard.add(KeyboardButton("Enviar o relatório"))  
+keyboard.add(KeyboardButton("Suporte"))  
+
+# 📌 Команда /start  
+@dp.message_handler(commands=["start"])  
+async def start(message: types.Message):  
+    await message.answer("Estamos muito felizes por ter você com a gente! Bora ganhar dinheiro fácil!", reply_markup=keyboard)  
+
+# 📌 Видача промокоду  
+@dp.message_handler(lambda message: message.text == "Resgatar código promocional")  
+async def redeem_promo(message: types.Message):  
+    user_id = message.from_user.id  
+
+    cursor.execute("SELECT wallet, promo_code FROM users WHERE user_id = ?", (user_id,))  
+    user = cursor.fetchone()  
+
+    if not user:  
+        await message.answer("Primeiro, por favor, envie sua carteira cripto para receber seus pagamentos futuros!")  
+    elif user[1]:  
+        await message.answer(f"Aqui está seu código promocional! {user[1]} \n\nNão se esqueça de entrar no nosso grupo: [amigo_bonuses](https://t.me/amigo_bonuses)", parse_mode="Markdown")  
+    else:  
+        promo_code = random.choice(PROMO_CODES)  
+        cursor.execute("UPDATE users SET promo_code = ? WHERE user_id = ?", (promo_code, user_id))  
+        conn.commit()  
+        await message.answer(f"Valeu! Agora você está oficialmente com a gente. Aqui está seu código promocional: {promo_code} \n\nNão se esqueça de entrar no nosso grupo: [amigo_bonuses](https://t.me/amigo_bonuses)", parse_mode="Markdown")  
+
+# 📌 Збереження криптогаманця  
+@dp.message_handler(lambda message: message.text.startswith("0x") or message.text.startswith("1") or message.text.startswith("3"))  
+async def save_wallet(message: types.Message):  
+    user_id = message.from_user.id  
+    wallet = message.text.strip()  
+
+    cursor.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))  
+    user = cursor.fetchone()  
+
+    if user:  
+        await message.answer("Você já enviou sua carteira cripto.")  
+    else:  
+        cursor.execute("INSERT INTO users (user_id, wallet) VALUES (?, ?)", (user_id, wallet))  
+        conn.commit()  
+        await message.answer("Carteira salva com sucesso! Agora você pode resgatar seu código promocional.")  
+
+# 📌 Надсилання годин  
+@dp.message_handler(lambda message: message.text == "Enviar o relatório")  
+async def send_report(message: types.Message):  
+    await message.answer("Quando seu amigo se registrou? (Digite um número)")  
+
+@dp.message_handler(lambda message: message.text.isdigit())  
+async def save_report(message: types.Message):  
+    user_id = message.from_user.id  
+    report = message.text.strip()  
+
+    cursor.execute("INSERT INTO reports (user_id, report) VALUES (?, ?)", (user_id, report))  
+    conn.commit()  
+
+    await message.answer("Obrigado! Quanto mais amigos, mais grana!")  
+
+# 📌 Підтримка  
+@dp.message_handler(lambda message: message.text == "Suporte")  
+async def support(message: types.Message):  
+    await message.answer("Fale com nosso suporte: @RoDrIgO_MATEO")  
+
+# 📌 Запуск бота  
+if bot.py == "__main__":  
+    executor.start_polling(dp, skip_updates=True)
