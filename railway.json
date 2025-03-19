@@ -4,7 +4,7 @@
     "builder": "DOCKERFILE"
   },
   "deploy": {
-    "startCommand": "/bin/sh -c \"/bin/uv run python app.py\"",
+    "startCommand": "/bin/sh -c \"/bin/uv run python bot.py\"",
     "restartPolicyType": "ALWAYS",
     "restartPolicyMaxRetries": 10
   }
