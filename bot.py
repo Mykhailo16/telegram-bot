@@ -167,7 +167,7 @@ async def register(update, context):
     user = get_user(user_id)
     if user is None:
         create_user(user_id)
-        await send_message(update, context, "Primeiro, por favor, envie sua carteira cripto para receber seus pagamentos futuros! (TRC20)print("\U0001F60A")  # 😊")
+        await send_message(update, context, "Primeiro, por favor, envie sua carteira cripto para receber seus pagamentos futuros! (TRC20)")
     else:
         await send_user_promo_code(update, context)
 
